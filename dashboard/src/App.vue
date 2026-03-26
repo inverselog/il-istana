@@ -51,7 +51,7 @@
         <SidebarTrigger class="-ml-1" />
         <Separator orientation="vertical" class="h-4" />
         <div class="flex items-center gap-2">
-          <div class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div class="h-2 w-2 rounded-full bg-primary animate-pulse" />
           <span class="text-sm font-medium text-muted-foreground">
             {{ view === 'cycles' ? 'Cycles' : view === 'log' ? 'Activity Log' : 'Tasks' }}
           </span>
@@ -132,7 +132,6 @@
                     v-if="selectedCycle.status === 'proposed' || selectedCycle.status === 'chatting'"
                     size="sm"
                     @click="approveCycle"
-                    class="bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="20 6 9 17 4 12"/></svg>
                     Approve
@@ -150,8 +149,8 @@
                     :class="msg.role === 'manager' ? 'flex-row-reverse' : ''"
                   >
                     <Avatar class="h-7 w-7 shrink-0 mt-0.5">
-                      <AvatarFallback :class="msg.role === 'iris' ? 'bg-violet-600 text-white text-[10px]' : 'bg-emerald-600 text-white text-[10px]'">
-                        {{ msg.role === 'iris' ? 'IR' : 'You' }}
+                      <AvatarFallback :class="msg.role === 'iris' ? 'bg-primary text-primary-foreground text-[10px]' : 'bg-secondary text-secondary-foreground text-[10px]'">
+                        {{ msg.role === 'iris' ? '🌸' : 'You' }}
                       </AvatarFallback>
                     </Avatar>
                     <div
@@ -161,10 +160,10 @@
                         : 'bg-primary text-primary-foreground'"
                     >
                       <div class="flex items-center gap-2 mb-1">
-                        <span class="text-[11px] font-semibold" :class="msg.role === 'iris' ? 'text-violet-400' : 'text-primary-foreground/70'">
+                        <span class="text-[11px] font-semibold" :class="msg.role === 'iris' ? 'text-muted-foreground' : 'text-primary-foreground/70'">
                           {{ msg.role === 'iris' ? 'Iris' : 'You' }}
                         </span>
-                        <span class="text-[10px]" :class="msg.role === 'iris' ? 'text-muted-foreground' : 'text-primary-foreground/50'">
+                        <span class="text-[10px]" :class="msg.role === 'iris' ? 'text-muted-foreground/60' : 'text-primary-foreground/50'">
                           {{ formatTime(msg.created_at) }}
                         </span>
                       </div>
@@ -185,7 +184,7 @@
                 v-if="selectedCycle.status === 'proposed' || selectedCycle.status === 'chatting'"
                 class="px-5 py-3 border-t border-border shrink-0"
               >
-                <div class="flex gap-2">
+                <div class="flex items-end gap-2">
                   <Textarea
                     v-model="messageText"
                     placeholder="Reply to Iris..."
@@ -194,8 +193,8 @@
                     @keydown.enter.meta="sendMessage"
                     @keydown.enter.ctrl="sendMessage"
                   />
-                  <Button size="sm" @click="sendMessage" :disabled="!messageText.trim()" class="shrink-0 self-end">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <Button size="icon" @click="sendMessage" :disabled="!messageText.trim()" class="shrink-0 h-10 w-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                   </Button>
                 </div>
               </div>
