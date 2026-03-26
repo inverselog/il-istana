@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dashboard/dist/
+.env
+google-creds.json
+*.log
+.DS_Store

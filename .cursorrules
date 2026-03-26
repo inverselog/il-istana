@@ -1,0 +1,33 @@
+# Iris Codebase Rules
+
+You are modifying the codebase for Iris, an autonomous self-improving AI agent.
+
+## Architecture
+- **Server**: Node.js + Express (ES modules) in `server/`
+- **Database**: Neon Postgres, schema in `db/migrations/`
+- **Dashboard**: Vue 3 + Vite in `dashboard/`
+- **Thinking**: Gemini 2.5 Pro with function calling (`server/gemini-client.js`)
+- **Execution**: Cursor Cloud API (`server/cursor-client.js`)
+- **Core loop**: `server/iris.js` — think → propose → approve → execute → log
+
+## Key Files
+- `server/iris.js` — Core brain. The SYSTEM_PROMPT here defines Iris's personality and behavior.
+- `server/gemini-client.js` — LLM integration with tool definitions.
+- `server/routes/` — REST API endpoints.
+- `db/migrations/` — Database schema (run in order).
+
+## Conventions
+- ES modules (`import`/`export`), not CommonJS
+- Async/await throughout
+- All database writes should be logged via `log()` from `iris.js`
+- New features should be added as new migration files (e.g., `002_feature.sql`)
+- The dashboard is a separate Vue 3 SPA that calls the API
+
+## Self-Modification
+When Iris modifies her own code:
+1. Create a new migration file if schema changes are needed
+2. Test changes don't break the core loop
+3. The server auto-restarts on deploy
+
+## Environment
+Required env vars: `DATABASE_URL`, `GEMINI_API_KEY`, `CURSOR_API_KEY`, `GITHUB_API_KEY`
