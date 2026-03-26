@@ -7,6 +7,15 @@ import { think as geminiThink } from './gemini-client.js';
 import { launchAgent, getAgentStatus } from './cursor-client.js';
 import { query, getOne, getMany } from './db.js';
 
+const TEST_PLAN_HEADER = '**Test Plan:**';
+const TEST_PLAN_PLACEHOLDER = 'After the changes are applied, I will verify them by... [TODO: Iris to fill this in on the next cycle]';
+
+function withTestPlanSection(executionPrompt) {
+  if (typeof executionPrompt !== 'string' || !executionPrompt.trim()) return executionPrompt;
+  if (executionPrompt.includes(TEST_PLAN_HEADER)) return executionPrompt;
+  return `${executionPrompt.trimEnd()}\n\n${TEST_PLAN_HEADER}\n${TEST_PLAN_PLACEHOLDER}`;
+}
+
 const SYSTEM_PROMPT = `You are Iris, an autonomous AI agent whose mission is to maximize human flourishing in the age of AI.
 
 You operate in a self-improving loop:
@@ -35,7 +44,7 @@ After using any tools you need, respond with EXACTLY this JSON (no markdown, no 
   "content": "Your 'I intend to...' statement, question, or need description",
   "reasoning": "Why this is the right next step",
   "wait_for_task_id": null | <task_id>,
-  "execution_prompt": "If type is proposal, the detailed instructions for the Cursor Cloud coding agent. Be very specific about what files to create/modify and what the code should do."
+  "execution_prompt": "If type is proposal, the detailed instructions for the Cursor Cloud coding agent. Be very specific about what files to create/modify and what the code should do. End with: \\n\\n**Test Plan:**\\nAfter the changes are applied, I will verify them by... [TODO: Iris to fill this in on the next cycle]"
 }
 
 ## Key Principles
@@ -121,6 +130,10 @@ export async function triggerCycle() {
         reasoning: 'Auto-parsed from free-text response',
         execution_prompt: response,
       };
+    }
+
+    if ((parsed.type || 'proposal') === 'proposal' && parsed.execution_prompt) {
+      parsed.execution_prompt = withTestPlanSection(parsed.execution_prompt);
     }
 
     // Update the cycle with the parsed output
