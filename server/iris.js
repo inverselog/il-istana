@@ -166,6 +166,64 @@ export async function triggerCycle() {
 }
 
 /**
+ * Reply to the user within an existing cycle.
+ * Re-reads all messages and has Iris respond conversationally.
+ */
+export async function replyInCycle(cycleId) {
+  const cycle = await getOne('SELECT * FROM cycles WHERE id = $1', [cycleId]);
+  if (!cycle) throw new Error('Cycle not found');
+
+  await query("UPDATE cycles SET status = 'thinking' WHERE id = $1", [cycleId]);
+
+  try {
+    // Get all messages in this cycle to build conversation context
+    const messages = await getMany(
+      'SELECT role, content, created_at FROM messages WHERE cycle_id = $1 ORDER BY created_at',
+      [cycleId]
+    );
+
+    const briefing = await buildBriefing([]);
+
+    // Build a chat-style prompt with the full conversation
+    const conversationContext = messages
+      .map(m => `${m.role === 'iris' ? 'IRIS' : 'MANAGER'}: ${m.content}`)
+      .join('\n\n');
+
+    const replyPrompt = `${briefing}
+
+### Conversation in Cycle #${cycleId}
+${conversationContext}
+
+### Instructions
+The manager has sent you a message. Reply naturally and helpfully.
+
+If the manager's message changes your proposal or gives you new direction, update your thinking accordingly.
+If they are asking a question, answer it.
+If they give feedback, acknowledge it and adjust.
+
+Reply with plain text (not JSON). Be concise and conversational.`;
+
+    const response = await geminiThink(SYSTEM_PROMPT, replyPrompt);
+
+    // Store Iris's reply
+    await query(
+      "INSERT INTO messages (cycle_id, role, content) VALUES ($1, 'iris', $2)",
+      [cycleId, response]
+    );
+
+    // Go back to 'proposed' or 'chatting' status so the user can continue
+    await query("UPDATE cycles SET status = 'chatting' WHERE id = $1", [cycleId]);
+
+    await log(cycleId, 'info', `Iris replied in cycle #${cycleId}`);
+  } catch (error) {
+    // Revert to chatting so the UI isn't stuck
+    await query("UPDATE cycles SET status = 'chatting' WHERE id = $1", [cycleId]);
+    await log(cycleId, 'error', `Reply failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Approve a cycle and execute it.
  */
 export async function approveCycle(cycleId) {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getMany, getOne, query } from '../db.js';
-import { triggerCycle, approveCycle } from '../iris.js';
+import { triggerCycle, approveCycle, replyInCycle } from '../iris.js';
 
 const router = Router();
 
@@ -60,12 +60,14 @@ router.post('/:id/message', async (req, res) => {
     [cycle.id, content]
   );
 
-  // Update cycle status to chatting if it was proposed
-  if (cycle.status === 'proposed') {
-    await query("UPDATE cycles SET status = 'chatting' WHERE id = $1", [cycle.id]);
-  }
+  // Update cycle status to thinking (Iris will reply)
+  await query("UPDATE cycles SET status = 'thinking' WHERE id = $1", [cycle.id]);
 
-  res.json({ success: true });
+  // Respond immediately so the UI updates
+  res.json({ success: true, status: 'thinking' });
+
+  // Trigger Iris to reply in the background
+  replyInCycle(cycle.id).catch(e => console.error('Reply failed:', e.message));
 });
 
 // Approve the current cycle

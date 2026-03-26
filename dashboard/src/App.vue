@@ -171,17 +171,27 @@
                     </div>
                   </div>
 
-                  <div v-if="!selectedCycle.messages?.length" class="py-16 text-center">
-                    <p class="text-sm text-muted-foreground">
-                      {{ selectedCycle.status === 'thinking' ? 'Iris is thinking...' : 'No messages yet' }}
-                    </p>
+                  <div v-if="!selectedCycle.messages?.length && selectedCycle.status !== 'thinking'" class="py-16 text-center">
+                    <p class="text-sm text-muted-foreground">No messages yet</p>
+                  </div>
+
+                  <!-- Thinking indicator -->
+                  <div v-if="selectedCycle.status === 'thinking'" class="flex gap-3">
+                    <Avatar class="h-7 w-7 shrink-0 mt-0.5">
+                      <AvatarFallback class="bg-muted text-muted-foreground text-[10px]">IR</AvatarFallback>
+                    </Avatar>
+                    <div class="rounded-xl px-4 py-3 bg-muted text-muted-foreground text-sm flex items-center gap-1.5">
+                      <span class="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style="animation-delay: 0ms" />
+                      <span class="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style="animation-delay: 150ms" />
+                      <span class="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style="animation-delay: 300ms" />
+                    </div>
                   </div>
                 </div>
               </ScrollArea>
 
               <!-- Input (only for active cycles) -->
               <div
-                v-if="selectedCycle.status === 'proposed' || selectedCycle.status === 'chatting'"
+                v-if="selectedCycle.status === 'proposed' || selectedCycle.status === 'chatting' || selectedCycle.status === 'thinking'"
                 class="px-5 py-3 border-t border-border shrink-0"
               >
                 <div class="flex items-end gap-2">
