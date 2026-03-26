@@ -149,8 +149,8 @@
                     :class="msg.role === 'manager' ? 'flex-row-reverse' : ''"
                   >
                     <Avatar class="h-7 w-7 shrink-0 mt-0.5">
-                      <AvatarFallback :class="msg.role === 'iris' ? 'bg-primary text-primary-foreground text-[10px]' : 'bg-secondary text-secondary-foreground text-[10px]'">
-                        {{ msg.role === 'iris' ? '🌸' : 'You' }}
+                      <AvatarFallback :class="msg.role === 'iris' ? 'bg-muted text-muted-foreground text-[10px]' : 'bg-secondary text-secondary-foreground text-[10px]'">
+                        {{ msg.role === 'iris' ? 'IR' : 'You' }}
                       </AvatarFallback>
                     </Avatar>
                     <div
