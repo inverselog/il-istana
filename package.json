@@ -12,8 +12,8 @@
     "dashboard:build": "cd dashboard && npm run build"
   },
   "dependencies": {
+    "@google-cloud/secret-manager": "^6.1.1",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "pg": "^8.13.1"
   }

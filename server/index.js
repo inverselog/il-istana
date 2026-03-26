@@ -1,14 +1,31 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { fetchSecretsAndSetEnv } from './src/gcp-secrets.js';
 
-import cyclesRouter from './routes/cycles.js';
-import logRouter from './routes/log.js';
-import tasksRouter from './routes/tasks.js';
-import { checkTasks, triggerCycle } from './iris.js';
-import { getOne } from './db.js';
+try {
+  await fetchSecretsAndSetEnv();
+} catch (error) {
+  console.error('Failed to load secrets from Google Secret Manager:', error);
+  process.exit(1);
+}
+
+const [
+  { default: express },
+  { default: cors },
+  { default: cyclesRouter },
+  { default: logRouter },
+  { default: tasksRouter },
+  { checkTasks, triggerCycle },
+  { getOne },
+] = await Promise.all([
+  import('express'),
+  import('cors'),
+  import('./routes/cycles.js'),
+  import('./routes/log.js'),
+  import('./routes/tasks.js'),
+  import('./iris.js'),
+  import('./db.js'),
+]);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
