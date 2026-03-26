@@ -35,8 +35,11 @@ router.get('/:id', async (req, res) => {
     [cycle.id]
   );
   // Get execution prompt if available
+  let execution_prompt = null;
   const promptState = await getOne("SELECT value FROM state WHERE key = $1", [`cycle_${cycle.id}_execution_prompt`]);
-  const execution_prompt = promptState ? JSON.parse(promptState.value) : null;
+  if (promptState) {
+    try { execution_prompt = JSON.parse(promptState.value); } catch { execution_prompt = promptState.value; }
+  }
   res.json({ ...cycle, messages, execution_prompt });
 });
 
