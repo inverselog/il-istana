@@ -3,10 +3,7 @@
     <Sidebar collapsible="icon" class="border-r border-border">
       <SidebarHeader class="px-3 py-4">
         <div class="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:justify-center">
-          <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-          </div>
-          <span class="font-semibold text-sm tracking-tight group-data-[collapsible=icon]:hidden">Iris</span>
+          <span class="font-semibold text-sm tracking-tight">Iris</span>
         </div>
       </SidebarHeader>
 
@@ -45,17 +42,6 @@
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter class="px-3 pb-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton @click="triggerCycle" :disabled="loading" class="justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              <span>{{ loading ? 'Thinking...' : 'New Cycle' }}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-
       <SidebarRail />
     </Sidebar>
 
@@ -78,11 +64,8 @@
         <div v-if="view === 'cycles'" class="flex h-full">
           <!-- Cycle list (left panel) -->
           <div class="w-72 border-r border-border flex flex-col shrink-0 bg-muted/30">
-            <div class="px-3 py-2.5 border-b border-border flex items-center justify-between">
+            <div class="px-3 py-2.5 border-b border-border">
               <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">All Cycles</span>
-              <Button size="sm" variant="ghost" @click="triggerCycle" :disabled="loading" class="h-7 w-7 p-0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </Button>
             </div>
             <ScrollArea class="flex-1">
               <div class="p-1.5">
@@ -96,9 +79,7 @@
                     : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'"
                 >
                   <div class="flex items-center gap-2 mb-1">
-                    <Badge :variant="cycle.type === 'proposal' ? 'default' : cycle.type === 'question' ? 'secondary' : 'outline'" class="text-[10px] px-1.5 py-0">
-                      {{ cycle.type }}
-                    </Badge>
+                    <span class="text-xs font-medium text-foreground/80">#{{ cycle.id }}</span>
                     <span class="text-[10px] text-muted-foreground ml-auto">
                       {{ formatTime(cycle.created_at) }}
                     </span>
@@ -108,19 +89,16 @@
                   </p>
                   <div class="mt-1.5">
                     <Badge
-                      :variant="['completed'].includes(cycle.status) ? 'default' : ['failed'].includes(cycle.status) ? 'destructive' : 'outline'"
+                      :variant="statusVariant(cycle.status)"
                       class="text-[10px] px-1.5 py-0"
                     >
-                      {{ cycle.status }}
+                      {{ statusLabel(cycle.status) }}
                     </Badge>
                   </div>
                 </button>
 
                 <div v-if="!allCycles.length" class="px-3 py-8 text-center">
-                  <p class="text-xs text-muted-foreground">No cycles yet</p>
-                  <Button size="sm" variant="outline" @click="triggerCycle" :disabled="loading" class="mt-3 text-xs">
-                    Trigger first cycle
-                  </Button>
+                  <p class="text-xs text-muted-foreground">No cycles yet — Iris will start thinking shortly</p>
                 </div>
               </div>
             </ScrollArea>
@@ -134,7 +112,7 @@
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 </div>
                 <h3 class="text-sm font-medium text-foreground mb-1">Select a cycle</h3>
-                <p class="text-xs text-muted-foreground">Pick a cycle from the list or start a new one</p>
+                <p class="text-xs text-muted-foreground">Pick a cycle from the list to view the conversation</p>
               </div>
             </div>
 
@@ -143,14 +121,9 @@
               <div class="px-5 py-3 border-b border-border shrink-0 flex items-center gap-3">
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm font-semibold">#{{ selectedCycle.id }}</span>
-                    <Badge :variant="selectedCycle.type === 'proposal' ? 'default' : selectedCycle.type === 'question' ? 'secondary' : 'outline'">
-                      {{ selectedCycle.type }}
-                    </Badge>
-                    <Badge
-                      :variant="['completed'].includes(selectedCycle.status) ? 'default' : ['failed'].includes(selectedCycle.status) ? 'destructive' : 'outline'"
-                    >
-                      {{ selectedCycle.status }}
+                    <span class="text-sm font-semibold">Cycle #{{ selectedCycle.id }}</span>
+                    <Badge :variant="statusVariant(selectedCycle.status)">
+                      {{ statusLabel(selectedCycle.status) }}
                     </Badge>
                   </div>
                 </div>
@@ -168,30 +141,41 @@
               </div>
 
               <!-- Messages -->
-              <ScrollArea class="flex-1 px-5" ref="messagesArea">
-                <div class="py-4 space-y-4 max-w-2xl">
+              <ScrollArea class="flex-1" ref="messagesArea">
+                <div class="p-5 space-y-3">
                   <div
                     v-for="msg in selectedCycle.messages || []"
                     :key="msg.id"
+                    class="flex gap-3"
+                    :class="msg.role === 'manager' ? 'flex-row-reverse' : ''"
                   >
-                    <div class="flex items-center gap-2 mb-1.5">
-                      <Avatar class="h-6 w-6">
-                        <AvatarFallback :class="msg.role === 'iris' ? 'bg-violet-600 text-white text-[10px]' : 'bg-emerald-600 text-white text-[10px]'">
-                          {{ msg.role === 'iris' ? 'IR' : 'You' }}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span class="text-xs font-medium" :class="msg.role === 'iris' ? 'text-violet-400' : 'text-emerald-400'">
-                        {{ msg.role === 'iris' ? 'Iris' : 'You' }}
-                      </span>
-                      <span class="text-[10px] text-muted-foreground">
-                        {{ formatTime(msg.created_at) }}
-                      </span>
+                    <Avatar class="h-7 w-7 shrink-0 mt-0.5">
+                      <AvatarFallback :class="msg.role === 'iris' ? 'bg-violet-600 text-white text-[10px]' : 'bg-emerald-600 text-white text-[10px]'">
+                        {{ msg.role === 'iris' ? 'IR' : 'You' }}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div
+                      class="rounded-xl px-4 py-3 max-w-[75%] text-sm leading-relaxed whitespace-pre-wrap"
+                      :class="msg.role === 'iris'
+                        ? 'bg-muted text-foreground/90'
+                        : 'bg-primary text-primary-foreground'"
+                    >
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="text-[11px] font-semibold" :class="msg.role === 'iris' ? 'text-violet-400' : 'text-primary-foreground/70'">
+                          {{ msg.role === 'iris' ? 'Iris' : 'You' }}
+                        </span>
+                        <span class="text-[10px]" :class="msg.role === 'iris' ? 'text-muted-foreground' : 'text-primary-foreground/50'">
+                          {{ formatTime(msg.created_at) }}
+                        </span>
+                      </div>
+                      {{ msg.content }}
                     </div>
-                    <div class="pl-8 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{{ msg.content }}</div>
                   </div>
 
                   <div v-if="!selectedCycle.messages?.length" class="py-16 text-center">
-                    <p class="text-sm text-muted-foreground">No messages yet</p>
+                    <p class="text-sm text-muted-foreground">
+                      {{ selectedCycle.status === 'thinking' ? 'Iris is thinking...' : 'No messages yet' }}
+                    </p>
                   </div>
                 </div>
               </ScrollArea>
@@ -201,7 +185,7 @@
                 v-if="selectedCycle.status === 'proposed' || selectedCycle.status === 'chatting'"
                 class="px-5 py-3 border-t border-border shrink-0"
               >
-                <div class="flex gap-2 max-w-2xl">
+                <div class="flex gap-2">
                   <Textarea
                     v-model="messageText"
                     placeholder="Reply to Iris..."
@@ -273,9 +257,7 @@
               >
                 <div class="flex items-center gap-2 mb-2">
                   <span class="text-sm font-medium">Task #{{ task.id }}</span>
-                  <Badge
-                    :variant="task.status === 'completed' ? 'default' : task.status === 'failed' ? 'destructive' : 'outline'"
-                  >
+                  <Badge :variant="statusVariant(task.status)">
                     {{ task.status }}
                   </Badge>
                 </div>
@@ -293,7 +275,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 
 import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
+  Sidebar, SidebarContent, SidebarGroup,
   SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarRail,
   SidebarTrigger,
@@ -316,6 +298,30 @@ const messageText = ref('');
 const loading = ref(false);
 const messagesArea = ref(null);
 let pollInterval = null;
+
+// Friendly status labels
+function statusLabel(status) {
+  const labels = {
+    thinking: 'Thinking',
+    proposed: 'Awaiting review',
+    chatting: 'In conversation',
+    approved: 'Approved',
+    executing: 'Executing',
+    waiting: 'Waiting',
+    completed: 'Done',
+    failed: 'Failed',
+    pending: 'Pending',
+    running: 'Running',
+  };
+  return labels[status] || status;
+}
+
+function statusVariant(status) {
+  if (['completed', 'done'].includes(status)) return 'default';
+  if (['failed'].includes(status)) return 'destructive';
+  if (['proposed', 'chatting'].includes(status)) return 'secondary';
+  return 'outline';
+}
 
 onMounted(async () => {
   await fetchCycles();
@@ -358,20 +364,6 @@ async function refreshSelectedCycle() {
   selectedCycle.value = await res.json();
 }
 
-async function triggerCycle() {
-  loading.value = true;
-  try {
-    const res = await fetch(`${API}/cycles/trigger`, { method: 'POST' });
-    const cycle = await res.json();
-    if (!cycle.error) {
-      await fetchCycles();
-      await selectCycle(cycle.id);
-    }
-  } finally {
-    loading.value = false;
-  }
-}
-
 async function sendMessage() {
   if (!messageText.value.trim() || !selectedCycle.value) return;
   await fetch(`${API}/cycles/${selectedCycle.value.id}/message`, {
@@ -411,7 +403,6 @@ async function checkTasks() {
 }
 
 function scrollToBottom() {
-  // Scroll messages to bottom
   const el = messagesArea.value?.$el?.querySelector('[data-radix-scroll-area-viewport]');
   if (el) el.scrollTop = el.scrollHeight;
 }
