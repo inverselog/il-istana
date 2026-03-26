@@ -1,11 +1,69 @@
 /**
  * Gemini 2.5 Pro client for Iris's thinking step.
- * Uses function calling so Iris can query her own DB during thinking.
+ * Uses Vertex AI endpoint with GCP service account for reliable access.
+ * Function calling so Iris can query her own DB during thinking.
  */
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { createSign } from 'crypto';
 
-// Tools Iris can use during thinking
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const VERTEX_REGION = process.env.VERTEX_REGION || 'us-central1';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+const GCP_PROJECT = process.env.GCP_PROJECT || 'inverselog';
+
+// --- Service Account JWT Auth ---
+
+let cachedToken = null;
+let tokenExpiry = 0;
+
+function loadServiceAccount() {
+  const credsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || join(__dirname, '..', 'google-creds.json');
+  return JSON.parse(readFileSync(credsPath, 'utf-8'));
+}
+
+function createJWT(sa) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  })).toString('base64url');
+
+  const sign = createSign('RSA-SHA256');
+  sign.update(`${header}.${payload}`);
+  const signature = sign.sign(sa.private_key, 'base64url');
+
+  return `${header}.${payload}.${signature}`;
+}
+
+async function getAccessToken() {
+  if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
+
+  const sa = loadServiceAccount();
+  const jwt = createJWT(sa);
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+
+  if (!res.ok) throw new Error(`Token exchange failed: ${await res.text()}`);
+  const data = await res.json();
+  cachedToken = data.access_token;
+  tokenExpiry = Date.now() + (data.expires_in - 60) * 1000; // refresh 1 min early
+  return cachedToken;
+}
+
+// --- Tools ---
+
 const TOOLS = [
   {
     function_declarations: [
@@ -83,19 +141,18 @@ const TOOLS = [
 /**
  * Execute a tool call from Gemini
  */
-async function executeTool(name, args, db) {
+async function executeTool(name, args) {
   const { getMany, getOne, query } = await import('./db.js');
 
   switch (name) {
     case 'run_sql': {
-      // Safety: only allow SELECT queries
       const sql = args.query.trim();
       if (!/^SELECT/i.test(sql)) {
         return { error: 'Only SELECT queries are allowed during thinking.' };
       }
       try {
         const result = await getMany(sql);
-        return { rows: result.slice(0, 50) }; // Cap at 50 rows
+        return { rows: result.slice(0, 50) };
       } catch (e) {
         return { error: e.message };
       }
@@ -132,23 +189,25 @@ async function executeTool(name, args, db) {
 }
 
 /**
- * Call Gemini with Iris's system prompt, context, and tools.
+ * Call Gemini via Vertex AI with Iris's system prompt, context, and tools.
  * Handles multi-turn tool calling automatically.
  */
 export async function think(systemPrompt, briefing) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+  const token = await getAccessToken();
+  const url = `https://${VERTEX_REGION}-aiplatform.googleapis.com/v1/projects/${GCP_PROJECT}/locations/${VERTEX_REGION}/publishers/google/models/${GEMINI_MODEL}:generateContent`;
 
   const contents = [
     { role: 'user', parts: [{ text: briefing }] },
   ];
 
-  // Multi-turn loop: Gemini may call tools, we execute and feed back
   const MAX_TURNS = 10;
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents,
@@ -162,30 +221,27 @@ export async function think(systemPrompt, briefing) {
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`Gemini API error ${res.status}: ${err}`);
+      throw new Error(`Vertex AI error ${res.status}: ${err}`);
     }
 
     const data = await res.json();
     const candidate = data.candidates?.[0];
-    if (!candidate) throw new Error('No candidate returned from Gemini');
+    if (!candidate) throw new Error('No candidate returned from Vertex AI');
 
     const parts = candidate.content?.parts || [];
-
-    // Check if there are function calls
     const functionCalls = parts.filter(p => p.functionCall);
 
     if (functionCalls.length === 0) {
-      // No more tool calls — extract the text response
       const textParts = parts.filter(p => p.text);
-      const fullText = textParts.map(p => p.text).join('\n');
-      return fullText;
+      return textParts.map(p => p.text).join('\n');
     }
 
-    // Execute function calls and add results
+    // Execute function calls and feed results back
     contents.push({ role: 'model', parts });
 
     const functionResponses = [];
     for (const fc of functionCalls) {
+      console.log(`  🔧 Tool call: ${fc.functionCall.name}(${JSON.stringify(fc.functionCall.args).slice(0, 100)})`);
       const result = await executeTool(fc.functionCall.name, fc.functionCall.args);
       functionResponses.push({
         functionResponse: {
