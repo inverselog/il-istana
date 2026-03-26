@@ -129,6 +129,16 @@
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   <Button
+                    v-if="selectedCycle.reasoning || selectedCycle.execution_prompt"
+                    size="sm"
+                    variant="ghost"
+                    @click="showDetails = !showDetails"
+                    class="text-muted-foreground"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    Details
+                  </Button>
+                  <Button
                     v-if="selectedCycle.status === 'proposed' || selectedCycle.status === 'chatting'"
                     size="sm"
                     @click="approveCycle"
@@ -136,6 +146,18 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="20 6 9 17 4 12"/></svg>
                     Approve
                   </Button>
+                </div>
+              </div>
+
+              <!-- Proposal details (collapsible) -->
+              <div v-if="showDetails && (selectedCycle.reasoning || selectedCycle.execution_prompt)" class="px-5 py-3 border-b border-border bg-muted/30 shrink-0 space-y-3">
+                <div v-if="selectedCycle.reasoning">
+                  <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Reasoning</p>
+                  <p class="text-xs text-foreground/80 leading-relaxed">{{ selectedCycle.reasoning }}</p>
+                </div>
+                <div v-if="selectedCycle.execution_prompt">
+                  <p class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Execution Prompt</p>
+                  <pre class="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap font-mono bg-muted rounded-md p-3">{{ selectedCycle.execution_prompt }}</pre>
                 </div>
               </div>
 
@@ -304,6 +326,7 @@ const logEntries = ref([]);
 const tasks = ref([]);
 const messageText = ref('');
 const loading = ref(false);
+const showDetails = ref(false);
 const messagesArea = ref(null);
 let pollInterval = null;
 

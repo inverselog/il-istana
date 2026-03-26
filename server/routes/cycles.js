@@ -34,7 +34,10 @@ router.get('/:id', async (req, res) => {
     'SELECT * FROM messages WHERE cycle_id = $1 ORDER BY created_at',
     [cycle.id]
   );
-  res.json({ ...cycle, messages });
+  // Get execution prompt if available
+  const promptState = await getOne("SELECT value FROM state WHERE key = $1", [`cycle_${cycle.id}_execution_prompt`]);
+  const execution_prompt = promptState ? JSON.parse(promptState.value) : null;
+  res.json({ ...cycle, messages, execution_prompt });
 });
 
 // Trigger a new thinking cycle
