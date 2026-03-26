@@ -182,6 +182,13 @@ export async function replyInCycle(cycleId) {
       [cycleId]
     );
 
+    const REPLY_SYSTEM_PROMPT = `You are Iris, an autonomous AI agent whose mission is to maximize human flourishing in the age of AI.
+
+You are having a conversation with your manager. Reply naturally, concisely, and conversationally.
+
+DO NOT output JSON. DO NOT output structured proposals. Just reply as a person would in a chat.
+If you want to update your proposal based on feedback, simply describe what you'll change in plain English.`;
+
     const briefing = await buildBriefing([]);
 
     // Build a chat-style prompt with the full conversation
@@ -194,24 +201,20 @@ export async function replyInCycle(cycleId) {
 ### Conversation in Cycle #${cycleId}
 ${conversationContext}
 
-### Instructions
-The manager has sent you a message. Reply naturally and helpfully.
+The manager just sent a message. Reply to them directly. Be concise.`;
 
-If the manager's message changes your proposal or gives you new direction, update your thinking accordingly.
-If they are asking a question, answer it.
-If they give feedback, acknowledge it and adjust.
+    const response = await geminiThink(REPLY_SYSTEM_PROMPT, replyPrompt);
 
-Reply with plain text (not JSON). Be concise and conversational.`;
-
-    const response = await geminiThink(SYSTEM_PROMPT, replyPrompt);
+    // Strip any accidentally leaked JSON blocks
+    const cleanResponse = response.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*"type"\s*:\s*"(?:proposal|question|need)"[\s\S]*\}/g, '').trim();
 
     // Store Iris's reply
     await query(
       "INSERT INTO messages (cycle_id, role, content) VALUES ($1, 'iris', $2)",
-      [cycleId, response]
+      [cycleId, cleanResponse || response]
     );
 
-    // Go back to 'proposed' or 'chatting' status so the user can continue
+    // Go back to 'chatting' status so the user can continue
     await query("UPDATE cycles SET status = 'chatting' WHERE id = $1", [cycleId]);
 
     await log(cycleId, 'info', `Iris replied in cycle #${cycleId}`);

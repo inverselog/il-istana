@@ -200,8 +200,7 @@
                     placeholder="Reply to Iris..."
                     rows="1"
                     class="min-h-[40px] max-h-[120px] resize-none text-sm"
-                    @keydown.enter.meta="sendMessage"
-                    @keydown.enter.ctrl="sendMessage"
+                    @keydown.enter.exact.prevent="sendMessage"
                   />
                   <Button size="icon" @click="sendMessage" :disabled="!messageText.trim()" class="shrink-0 h-10 w-10">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
