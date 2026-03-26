@@ -12,7 +12,7 @@ import { createSign } from 'crypto';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const VERTEX_REGION = process.env.VERTEX_REGION || 'us-central1';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-pro-latest';
 const GCP_PROJECT = process.env.GCP_PROJECT || 'inverselog';
 
 // --- Service Account JWT Auth ---
