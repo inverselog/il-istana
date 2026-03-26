@@ -392,20 +392,39 @@ async function selectCycle(id) {
 async function refreshSelectedCycle() {
   if (!selectedCycleId.value) return;
   const res = await fetch(`${API}/cycles/${selectedCycleId.value}`);
+  const prev = selectedCycle.value;
   selectedCycle.value = await res.json();
+  // Auto-scroll if new messages appeared
+  if (selectedCycle.value.messages?.length !== prev?.messages?.length) {
+    await nextTick();
+    scrollToBottom();
+  }
 }
 
 async function sendMessage() {
   if (!messageText.value.trim() || !selectedCycle.value) return;
+  const text = messageText.value;
+  messageText.value = '';
+
+  // Optimistic: add message to UI immediately
+  if (!selectedCycle.value.messages) selectedCycle.value.messages = [];
+  selectedCycle.value.messages.push({
+    id: Date.now(),
+    cycle_id: selectedCycle.value.id,
+    role: 'manager',
+    content: text,
+    created_at: new Date().toISOString(),
+  });
+  selectedCycle.value.status = 'thinking';
+  await nextTick();
+  scrollToBottom();
+
+  // Then send to server
   await fetch(`${API}/cycles/${selectedCycle.value.id}/message`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: messageText.value }),
+    body: JSON.stringify({ content: text }),
   });
-  messageText.value = '';
-  await refreshSelectedCycle();
-  await nextTick();
-  scrollToBottom();
 }
 
 async function approveCycle() {

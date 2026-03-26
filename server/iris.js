@@ -214,8 +214,23 @@ The manager just sent a message. Reply to them directly. Be concise.`;
       [cycleId, cleanResponse || response]
     );
 
-    // Go back to 'chatting' status so the user can continue
-    await query("UPDATE cycles SET status = 'chatting' WHERE id = $1", [cycleId]);
+    // Check if the manager's last message signals approval intent
+    const lastManagerMsg = messages.filter(m => m.role === 'manager').pop();
+    const approvalPatterns = /\b(proceed|go ahead|approved?|yes|do it|ship it|sounds good|lgtm|let'?s go|make it happen|execute|run it)\b/i;
+    const isApproval = lastManagerMsg && approvalPatterns.test(lastManagerMsg.content);
+
+    if (isApproval && cycle.type === 'proposal') {
+      // Auto-approve: set status, then trigger execution
+      await log(cycleId, 'info', `Manager approved via chat: "${lastManagerMsg.content.slice(0, 50)}"`);
+      await query("UPDATE cycles SET status = 'chatting' WHERE id = $1", [cycleId]);
+      // Give the UI a moment to show Iris's reply, then approve
+      setTimeout(() => {
+        approveCycle(cycleId).catch(e => console.error('Auto-approve failed:', e));
+      }, 2000);
+    } else {
+      // Go back to 'chatting' status so the user can continue
+      await query("UPDATE cycles SET status = 'chatting' WHERE id = $1", [cycleId]);
+    }
 
     await log(cycleId, 'info', `Iris replied in cycle #${cycleId}`);
   } catch (error) {
